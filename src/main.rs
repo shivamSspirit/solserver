@@ -1,27 +1,20 @@
-// Started this project for the Solana fellowship
-
-
 use actix_web::{web, App, HttpResponse, HttpServer, Result, middleware::Logger};
 use serde::{Deserialize, Serialize};
 use solana_sdk::{
     pubkey::Pubkey,
     signature::{Keypair, Signature, Signer},
-    system_instruction,
-    instruction::{AccountMeta, Instruction}
+    system_instruction
 };
 
-use ed25519_dalek::Verifier;
 
 use spl_token::{
-    instruction as token_instruction,
-    state::Mint,
+    instruction as token_instruction
 };
-use spl_associated_token_account::instruction as ata_instruction;
 use base64;
 use bs58;
 use std::str::FromStr;
 
-// Basic response wrapper - keeping it simple
+
 #[derive(Serialize)]
 struct ApiResponse<T> {
     success: bool,
@@ -49,7 +42,7 @@ impl<T> ApiResponse<T> {
     }
 }
 
-// Request structures - had to match the spec exactly
+// Request structures 
 #[derive(Deserialize)]
 struct CreateTokenRequest {
     #[serde(rename = "mintAuthority")]
@@ -159,13 +152,11 @@ fn validate_pubkey(pubkey_str: &str) -> Result<Pubkey, String> {
 }
 
 fn validate_secret_key(secret_str: &str) -> Result<Keypair, String> {
-    // Decode the base58 secret key
     let secret_bytes = match bs58::decode(secret_str).into_vec() {
         Ok(bytes) => bytes,
         Err(_) => return Err("Invalid secret key format".to_string()),
     };
     
-    // Solana keypairs are 64 bytes
     if secret_bytes.len() != 64 {
         return Err("Invalid secret key length".to_string());
     }
@@ -223,7 +214,6 @@ async fn create_token(req: web::Json<CreateTokenRequest>) -> Result<HttpResponse
         }
     };
 
-    // Convert accounts to our format
     let accounts: Vec<AccountInfo> = instruction.accounts
         .iter()
         .map(|acc| AccountInfo {
@@ -243,7 +233,6 @@ async fn create_token(req: web::Json<CreateTokenRequest>) -> Result<HttpResponse
 }
 
 async fn mint_token(req: web::Json<MintTokenRequest>) -> Result<HttpResponse> {
-    // Parse all the required pubkeys
     let mint = match validate_pubkey(&req.mint) {
         Ok(pk) => pk,
         Err(e) => return Ok(HttpResponse::BadRequest().json(ApiResponse::<()>::error(&e))),
@@ -265,7 +254,7 @@ async fn mint_token(req: web::Json<MintTokenRequest>) -> Result<HttpResponse> {
         &mint,
         &destination,
         &authority,
-        &[], // no multisig signers
+        &[],
         req.amount,
     ) {
         Ok(inst) => inst,
@@ -294,7 +283,6 @@ async fn mint_token(req: web::Json<MintTokenRequest>) -> Result<HttpResponse> {
 }
 
 async fn sign_message(req: web::Json<SignMessageRequest>) -> Result<HttpResponse> {
-    // Check for required fields first
     if req.message.is_empty() || req.secret.is_empty() {
         return Ok(HttpResponse::BadRequest().json(
             ApiResponse::<()>::error("Missing required fields")
@@ -361,7 +349,6 @@ async fn verify_message(req: web::Json<VerifyMessageRequest>) -> Result<HttpResp
 }
 
 async fn send_sol(req: web::Json<SendSolRequest>) -> Result<HttpResponse> {
-    // Parse sender and recipient
     let from = match validate_pubkey(&req.from) {
         Ok(pk) => pk,
         Err(e) => return Ok(HttpResponse::BadRequest().json(ApiResponse::<()>::error(&e))),
@@ -372,14 +359,13 @@ async fn send_sol(req: web::Json<SendSolRequest>) -> Result<HttpResponse> {
         Err(e) => return Ok(HttpResponse::BadRequest().json(ApiResponse::<()>::error(&e))),
     };
 
-    // Make sure amount is valid
     if req.lamports == 0 {
         return Ok(HttpResponse::BadRequest().json(
             ApiResponse::<()>::error("Amount must be greater than 0")
         ));
     }
 
-    // Create the transfer instruction - this is straightforward
+    // Create the transfer instruction
     let instruction = system_instruction::transfer(&from, &to, req.lamports);
 
     let response = SolTransferData {
@@ -395,7 +381,6 @@ async fn send_sol(req: web::Json<SendSolRequest>) -> Result<HttpResponse> {
 }
 
 async fn send_token(req: web::Json<SendTokenRequest>) -> Result<HttpResponse> {
-    // Parse all the pubkeys we need
     let destination = match validate_pubkey(&req.destination) {
         Ok(pk) => pk,
         Err(e) => return Ok(HttpResponse::BadRequest().json(ApiResponse::<()>::error(&e))),
@@ -457,7 +442,6 @@ async fn send_token(req: web::Json<SendTokenRequest>) -> Result<HttpResponse> {
 
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
-    // Initialize logging
     env_logger::init();
 
     println!("🚀 Starting Solana HTTP Server...");
