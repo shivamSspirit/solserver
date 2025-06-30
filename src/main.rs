@@ -283,30 +283,33 @@ async fn mint_token(req: web::Json<MintTokenRequest>) -> Result<HttpResponse> {
 }
 
 async fn sign_message(req: web::Json<SignMessageRequest>) -> Result<HttpResponse> {
-    if req.message.is_empty() || req.secret.is_empty() {
+   
+    if req.message.trim().is_empty() || req.secret.trim().is_empty() {
         return Ok(HttpResponse::BadRequest().json(
-            ApiResponse::<()>::error("Missing required fields")
+            ApiResponse::<()>::error("Missing 'message' or 'secret' field")
         ));
     }
 
-    // Parse the secret key
+   
     let keypair = match validate_secret_key(&req.secret) {
         Ok(kp) => kp,
         Err(e) => return Ok(HttpResponse::BadRequest().json(ApiResponse::<()>::error(&e))),
     };
 
-    // Sign the message
+   
     let message_bytes = req.message.as_bytes();
     let signature = keypair.sign_message(message_bytes);
 
+   
     let response = SignatureData {
-        signature: base64::encode(&signature.as_ref()),
+        signature: base64::encode(signature.as_ref()),
         public_key: bs58::encode(keypair.pubkey().to_bytes()).into_string(),
         message: req.message.clone(),
     };
 
     Ok(HttpResponse::Ok().json(ApiResponse::success(response)))
 }
+
 
 async fn verify_message(req: web::Json<VerifyMessageRequest>) -> Result<HttpResponse> {
     // Parse the public key
