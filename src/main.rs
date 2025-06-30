@@ -204,7 +204,7 @@ async fn create_token(req: web::Json<CreateTokenRequest>) -> Result<HttpResponse
         &spl_token::id(),
         &mint,
         &mint_authority,
-        None, // freeze authority is optional
+        None,
         req.decimals,
     ) {
         Ok(inst) => inst,

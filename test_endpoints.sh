@@ -35,7 +35,6 @@ echo "Response: $VERIFY_RESPONSE"
 
 # Test 4: SOL transfer instruction
 echo -e "\n4️⃣ Testing SOL transfer instruction..."
-# Using some random addresses for testing
 FROM_ADDR="11111111111111111111111111111112"
 TO_ADDR="11111111111111111111111111111113"
 SOL_RESPONSE=$(curl -s -X POST "$BASE_URL/send/sol" \
